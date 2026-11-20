@@ -5,10 +5,11 @@ const open=()=>new Promise((res,rej)=>{const r=indexedDB.open('dtc',1);
 const tx=async(s,m,f)=>{const d=await open();return new Promise((res,rej)=>{const t=d.transaction(s,m);const o=t.objectStore(s);const q=f(o);t.oncomplete=()=>res(q&&q.result);t.onerror=()=>rej(t.error)})};
 export const localAll=s=>tx(s,'readonly',o=>o.getAll());
 export async function syncDtc(){
- const {data,error}=await supabase.from('dtc_codes').select('*').eq('status','validado');
- if(error)throw error;
- await tx('dtc','readwrite',o=>{o.clear();data.forEach(x=>o.put(x))});
- await tx('meta','readwrite',o=>o.put({k:'last',v:new Date().toISOString()}));return data.length}
+ let all=[],from=0;
+ for(;;){const {data,error}=await supabase.from('dtc_obd').select('*').eq('status','validado').order('id').range(from,from+999);
+  if(error)throw error;all=all.concat(data);if(data.length<1000)break;from+=1000}
+ await tx('dtc','readwrite',o=>{o.clear();all.forEach(x=>o.put(x))});
+ await tx('meta','readwrite',o=>o.put({k:'last',v:new Date().toISOString()}));return all.length}
 export const lastSync=async()=>(await tx('meta','readonly',o=>o.get('last')))?.v;
 export async function saveRepair(rep){
  rep.client_id=crypto.randomUUID();

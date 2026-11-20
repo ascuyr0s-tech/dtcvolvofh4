@@ -1,14 +1,11 @@
 import {useEffect,useState} from 'react'
-import {supabase} from '../lib/supabase'
-import {Ficha} from './Dtc'
+import {consultar,Resultados} from './Dtc'
+const SUG=['potencia','arranque','combustible','DPF','AdBlue','cambio','presión de aire','freno','testigo','batería']
 export default function Symptoms(){
- const [l,setL]=useState([]),[res,setRes]=useState(null),[sel,setSel]=useState(null),[n,setN]=useState('')
- useEffect(()=>{supabase.from('symptoms').select('*').order('name').then(({data})=>setL(data||[]))},[])
- const pick=async s=>{setN(s.name);const {data}=await supabase.from('dtc_symptoms').select('dtc_codes(*)').eq('symptom_id',s.id);
-  setRes((data||[]).map(x=>x.dtc_codes).filter(Boolean))}
- if(sel)return <><button className="sec" onClick={()=>setSel(null)}>← Volver</button><Ficha d={sel}/></>
+ const [q,setQ]=useState(''),[r,setR]=useState({rows:[],src:''})
+ useEffect(()=>{const t=setTimeout(async()=>setR(await consultar(q,['comportamiento','evento_falla','posibles_causas','componente'],'')),300);return()=>clearTimeout(t)},[q])
  return <><h1>Diagnóstico por síntomas</h1>
-  {!res?l.map(s=><button className="sec" key={s.id} onClick={()=>pick(s)}>{s.name}</button>):<>
-   <button className="sec" onClick={()=>setRes(null)}>← Otros síntomas</button><h3>{n}</h3>
-   <p><small>Los códigos mostrados están <b>relacionados</b> con el síntoma; un síntoma por sí solo no confirma una causa.</small></p>
-   {res.length?res.map(d=><div className="card" key={d.id} onClick={()=>setSel(d)}><b>{d.code}</b><p>{d.description}</p></div>):<p>No hay códigos documentados vinculados a este síntoma.</p>}</>}</>}
+  <input placeholder="Describe el síntoma (ej. pérdida de potencia, AdBlue…)" value={q} onChange={e=>setQ(e.target.value)}/>
+  <div>{SUG.map(s=><button key={s} className="sec" style={{width:'auto',display:'inline-block',margin:3,padding:'8px 12px',minHeight:0}} onClick={()=>setQ(s)}>{s}</button>)}</div>
+  <p><small>Busca en comportamiento funcional, evento de falla, causas y componente. Los resultados son códigos <b>relacionados</b>: un síntoma por sí solo no confirma una causa.</small></p>
+  <Resultados rows={r.rows} q={q}/></>}
